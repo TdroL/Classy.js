@@ -1,0 +1,286 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+<head>
+	<meta charset="UTF-8">
+	<title>Classy</title>
+	<link rel="stylesheet" href="qunit/qunit/qunit.css" />
+</head>
+<body>
+	<h1 id="qunit-header">Classy</h1>
+	<h2 id="qunit-banner"></h2>
+	<div id="qunit-testrunner-toolbar"></div>
+	<h2 id="qunit-userAgent"></h2>
+	<ol id="qunit-tests"></ol>
+	<div id="qunit-fixture"></div>
+
+	<script src="qunit/qunit/qunit.js"></script>
+	<script src="../classy.js"></script>
+	<script>
+
+		test('create new class', function() {
+			var Test = Classy({});
+
+			ok((new Test) instanceof Test, '(new Test) instanceof Test');
+			ok((new Test).instanceOf(Test), '(new Test).instanceOf(Test)');
+		});
+
+		test('create new class with initializer', function() {
+			var executed = false,
+				Test = Classy({
+					init: function() {
+						executed = true;
+					}
+				});
+
+			new Test;
+			ok(executed, 'init() executed');
+		});
+
+		test('inheritance', function() {
+			var Test1 = Classy({
+					v: 'Test1.v',
+					m: function() {
+						return this.v;
+					}
+				}),
+				Test2 = Classy(Test1, {}),
+				Test3 = Classy(Test2, {});
+
+			equal((new Test1).v,   'Test1.v',
+					'(new Test1).v');
+			equal((new Test2).v,   'Test1.v',
+					'(new Test2).v');
+			equal((new Test3).v,   'Test1.v',
+					'(new Test3).v');
+			equal((new Test2).m(), 'Test1.v',
+					'(new Test1).m()');
+			equal((new Test2).m(), 'Test1.v',
+					'(new Test2).m()');
+			equal((new Test3).m(), 'Test1.v',
+					'(new Test3).m()');
+
+			ok((new Test2) instanceof Test1, '(new Test2) instanceof Test1');
+			ok((new Test3) instanceof Test1, '(new Test3) instanceof Test1');
+			ok((new Test3) instanceof Test2, '(new Test3) instanceof Test2');
+			ok((new Test3) instanceof Test3, '(new Test3) instanceof Test3');
+
+			ok((new Test2).instanceOf(Test1), '(new Test2).instanceOf(Test1)');
+			ok((new Test3).instanceOf(Test1), '(new Test3).instanceOf(Test1)');
+			ok((new Test3).instanceOf(Test2), '(new Test3).instanceOf(Test2)');
+			ok((new Test3).instanceOf(Test3), '(new Test3).instanceOf(Test3)');
+
+			ok(Test1.parentOf(new Test3), 'Test1.parentOf(new Test3)');
+			ok(Test2.parentOf(new Test3), 'Test2.parentOf(new Test3)');
+			ok(Test3.parentOf(new Test3), 'Test3.parentOf(new Test3)');
+
+			ok(Test1.parentOf(Test3), 'Test1.parentOf(Test1)');
+			ok(Test2.parentOf(Test3), 'Test2.parentOf(Test2)');
+			ok(Test3.parentOf(Test3), 'Test3.parentOf(Test3)');
+		});
+
+		test('overloading', function() {
+			var Test1 = Classy({
+					m1: function() {
+						return 'Test1.m1';
+					},
+					m2: function() {
+						return 'Test1.m2';
+					}
+				}),
+				Test2 = Classy(Test1, {
+					m1: function() {
+						return 'Test2.m1';
+					}
+				}),
+				Test3 = Classy(Test2, {
+					m2: function() {
+						return 'Test3.m2';
+					}
+				});
+
+			equal((new Test2).m1(), 'Test2.m1',
+					'(new Test2).m1()');
+			equal((new Test3).m2(), 'Test3.m2',
+					'(new Test3).m2()');
+
+		});
+
+		test('access to overloaded methods', function() {
+			var Test1 = Classy({
+					m1: function() {
+						return 'Test1.m1';
+					},
+					m2: function() {
+						return 'Test1.m2';
+					},
+					m3: function(a, b) {
+						return 'Test1.m2('+a+','+b+')';
+					}
+				}),
+				Test2 = Classy(Test1, {
+					m1: function() {
+						return Test1.m1(this)()+':Test2.m1';
+					}
+				}),
+				Test3 = Classy(Test2, {
+					m1: function() {
+						return Test2.m1(this)()+':Test3.m1';
+					},
+					m2: function() {
+						return Test1.m2(this)()+':Test3.m1';
+					},
+					m3: function(a, b) {
+						return Test1.m3(this)(a, b)+':Test3.m1('+a+','+b+')';
+					}
+				});
+
+			equal((new Test2).m1(),'Test1.m1:Test2.m1',
+					'(new Test2).m1() -> Test1.m1()');
+			equal((new Test3).m1(), 'Test1.m1:Test2.m1:Test3.m1',
+					'(new Test3).m1() -> Test2.m1() -> Test1.m1()');
+			equal((new Test3).m2(), 'Test1.m2:Test3.m1',
+					'(new Test3).m2() -> Test1.m2()');
+			equal((new Test3).m3(1, 2), 'Test1.m2(1,2):Test3.m1(1,2)',
+					'(new Test3).m3(a, b) -> Test1.m3(a, b)');
+		});
+
+		test('multiple inheritance', function() {
+			var Test1 = Classy({
+					m1: function() {
+						return 'Test1.m1';
+					}
+				}),
+				Test2 = Classy({
+					m2: function() {
+						return 'Test2.m2';
+					}
+				}),
+				Test3 = Classy(Test1, Test2, {
+					m3: function() {
+						return 'Test3.m3';
+					}
+				});
+
+			equal((new Test3).m1(), 'Test1.m1',
+					'(new Test3).m1() >> Test1.m1()');
+			equal((new Test3).m2(), 'Test2.m2',
+					'(new Test3).m2() >> Test2.m2()');
+			equal((new Test3).m3(), 'Test3.m3',
+					'(new Test3).m3()');
+
+			ok( ! ((new Test3) instanceof Test1), '(new Test3) instanceof Test1 fails');
+			ok((new Test3) instanceof Test2, '(new Test3) instanceof Test2 works for last parent');
+			ok((new Test3) instanceof Test3, '(new Test3) instanceof Test3 works for last parent');
+
+			ok((new Test3).instanceOf(Test1), '(new Test3).instanceOf(Test1)');
+			ok((new Test3).instanceOf(Test2), '(new Test3).instanceOf(Test2)');
+			ok((new Test3).instanceOf(Test3), '(new Test3).instanceOf(Test3)');
+
+			ok(Test1.parentOf(new Test3), 'Test1.parentOf(new Test1)');
+			ok(Test2.parentOf(new Test3), 'Test2.parentOf(new Test2)');
+			ok(Test3.parentOf(new Test3), 'Test3.parentOf(new Test3)');
+
+			ok(Test1.parentOf(Test3), 'Test1.parentOf(Test1)');
+			ok(Test2.parentOf(Test3), 'Test2.parentOf(Test2)');
+			ok(Test3.parentOf(Test3), 'Test3.parentOf(Test3)');
+		});
+
+		test('multiple inheritance using array of parents', function() {
+			var Test1 = Classy({
+					m1: function() {
+						return 'Test1.m1';
+					}
+				}),
+				Test2 = Classy({
+					m2: function() {
+						return 'Test2.m2';
+					}
+				}),
+				Test3 = Classy([Test1, Test2], {
+					m3: function() {
+						return 'Test3.m3';
+					}
+				});
+
+			equal((new Test3).m1(), 'Test1.m1',
+					'(new Test3).m1() >> Test1.m1()');
+			equal((new Test3).m2(), 'Test2.m2',
+					'(new Test3).m2() >> Test2.m2()');
+			equal((new Test3).m3(), 'Test3.m3',
+					'(new Test3).m3()');
+
+			ok( ! ((new Test3) instanceof Test1), '(new Test3) instanceof Test1 fails');
+			ok((new Test3) instanceof Test2, '(new Test3) instanceof Test2 works for last parent');
+			ok((new Test3) instanceof Test3, '(new Test3) instanceof Test3 works for last parent');
+
+			ok((new Test3).instanceOf(Test1), '(new Test3).instanceOf(Test1)');
+			ok((new Test3).instanceOf(Test2), '(new Test3).instanceOf(Test2)');
+			ok((new Test3).instanceOf(Test3), '(new Test3).instanceOf(Test3)');
+
+			ok(Test1.parentOf(new Test3), 'Test1.parentOf(new Test3)');
+			ok(Test2.parentOf(new Test3), 'Test2.parentOf(new Test3)');
+			ok(Test3.parentOf(new Test3), 'Test3.parentOf(new Test3)');
+
+			ok(Test1.parentOf(Test3), 'Test1.parentOf(Test3)');
+			ok(Test2.parentOf(Test3), 'Test2.parentOf(Test3)');
+			ok(Test3.parentOf(Test3), 'Test3.parentOf(Test3)');
+		});
+
+		test('multiple inheritance, overloading', function() {
+			var Test1 = Classy({
+					m1: function() {
+						return 'Test1.m1';
+					}
+				}),
+				Test2 = Classy({
+					m2: function() {
+						return 'Test2.m2';
+					}
+				}),
+				Test3 = Classy(Test1, Test2, {
+					m1: function() {
+						return 'Test3.m1';
+					},
+					m2: function() {
+						return 'Test3.m2';
+					}
+				});
+
+			equal((new Test3).m1(), 'Test3.m1',
+					'(new Test3).m1()');
+			equal((new Test3).m2(), 'Test3.m2',
+					'(new Test3).m2()');
+		});
+
+		test('multiple inheritance, access to overloaded methods', function() {
+			var Test1 = Classy({
+					m1: function() {
+						return 'Test1.m1';
+					}
+				}),
+				Test2 = Classy({
+					m1: function() {
+						return 'Test2.m1';
+					},
+					m2: function() {
+						return 'Test2.m2';
+					}
+				}),
+				Test3 = Classy(Test1, Test2, {
+					m1: function() {
+						return Test1.m1(this)()+':Test3.m1';
+					},
+					m2: function() {
+						return Test2.m2(this)()+':Test3.m2';
+					}
+				});
+
+			equal((new Test3).m1(), 'Test1.m1:Test3.m1',
+					'(new Test3).m1() -> Test1.m1()');
+			equal((new Test3).m2(), 'Test2.m2:Test3.m2',
+					'(new Test3).m2() -> Test1.m2()');
+		});
+
+	</script>
+</body>
+</html>
