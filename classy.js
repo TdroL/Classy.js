@@ -31,20 +31,9 @@ window.Classy = window.Classy || function(methods)
 	};
 
 	for (var i in parents) {
-		prototype = parents[i].prototype;
-
-		// Prevent from executing init method
-		init = prototype.init;
-		if (init !== undefined)
-			prototype.init = undefined;
-
 		// Save current methods
 		currentProto = classy.prototype;
-		classy.fn = classy.prototype = new (parents[i]);
-
-		// Restore init method
-		if (init !== undefined)
-			prototype.init = init;
+		classy.fn = classy.prototype = Object.create(parents[i].prototype);
 
 		// Restore unchanged methods
 		for (var j in currentProto) {
